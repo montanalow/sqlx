@@ -17,6 +17,7 @@ use crate::postgres::message::{
 };
 use crate::postgres::statement::PgStatementMetadata;
 use crate::postgres::{PgConnectOptions, PgTypeInfo, Postgres};
+use crate::row::Row;
 use crate::transaction::Transaction;
 
 pub(crate) mod describe;
@@ -99,6 +100,21 @@ impl PgConnection {
         self.transaction_status = ReadyForQuery::decode(message.contents)?.transaction_status;
 
         Ok(())
+    }
+
+    pub async fn server_version(&mut self) -> Result<String, Error> {
+        let result = self.fetch_one("SHOW server_version;",).await?;
+        let server_version: String = result.get("server_version");
+
+        Ok(server_version)
+    }
+
+    pub async fn server_major_version(&mut self) -> Result<i32, Error> {
+        let server_version = self.server_version().await?;
+        let first = server_version.split(".").next().unwrap();
+        let major_version = first.parse::<i32>().unwrap();
+
+        Ok(major_version)
     }
 }
 
